@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mushak Task_Tools</title>
+  <style>
+    :root { 
+      --space-primary: #ffffff; 
+      --space-secondary: #b0b0b0;
+      --space-accent: #00ffff;
+      --space-dark: #0a0a0a;
+      --space-light: #f5f5f5;
+    }
+
+    body { 
+      background-color: var(--space-dark); 
+      background-image: 
+        radial-gradient(circle at 20% 50%, rgba(255, 255, 255, 0.08) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(0, 255, 255, 0.05) 0%, transparent 40%),
+        radial-gradient(2px 2px at 20px 30px, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.15) 2px, transparent 40px),
+        radial-gradient(2px 2px at 60px 70px, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0.1) 2px, transparent 40px),
+        radial-gradient(1px 1px at 50px 50px, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.2) 1px, transparent 30px);
+      background-size: 200px 200px, 150px 150px, 200px 200px, 150px 150px, 100px 100px;
+      background-attachment: fixed;
+      animation: starfield 60s linear infinite;
+      color: var(--space-light); 
+      font-family: 'Courier New', 'Segoe UI', monospace; 
+      text-align: center; 
+      margin: 0; 
+      padding-top: 30px; 
+      box-sizing: border-box; 
+      overflow-x: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-image: 
+        radial-gradient(1px 1px at 10% 20%, rgba(255, 255, 255, 0.9) 0%, transparent 1px),
+        radial-gradient(1px 1px at 20% 30%, rgba(0, 255, 255, 0.7) 0%, transparent 1px),
+        radial-gradient(2px 2px at 50% 50%, rgba(255, 255, 255, 0.8) 0%, transparent 2px),
+        radial-gradient(1px 1px at 80% 10%, rgba(255, 255, 255, 0.6) 0%, transparent 1px),
+        radial-gradient(1px 1px at 90% 60%, rgba(0, 255, 255, 0.5) 0%, transparent 1px),
+        radial-gradient(2px 2px at 30% 70%, rgba(255, 255, 255, 0.7) 0%, transparent 2px),
+        radial-gradient(1px 1px at 60% 20%, rgba(255, 255, 255, 0.9) 0%, transparent 1px),
+        radial-gradient(1px 1px at 15% 80%, rgba(0, 255, 255, 0.6) 0%, transparent 1px);
+      background-size: 300px 300px;
+      background-repeat: repeat;
+      pointer-events: none;
+      animation: twinkleStar 8s ease-in-out infinite, driftStar 120s linear infinite;
+      z-index: 0;
+    }
+
+    body > * {
+      position: relative;
+      z-index: 1;
+    }
+
+    h1 { 
+      color: var(--space-primary); 
+      letter-spacing: 5px; 
+      text-transform: uppercase; 
+      text-shadow: 0 0 10px var(--space-accent), 0 0 20px rgba(0, 255, 255, 0.5), 2px 2px 4px rgba(0,0,0,0.9);
+      animation: spacePulse 3s ease-in-out infinite;
+      font-size: 2.2em;
+      margin: 0 0 10px 0;
+      font-weight: 900;
+    }
+
+    .subtitle {
+      color: var(--space-secondary);
+      font-size: 0.9em;
+      letter-spacing: 2px;
+      margin-bottom: 30px;
+      text-transform: uppercase;
+      opacity: 0.7;
+      text-shadow: 0 0 5px rgba(0, 255, 255, 0.3);
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 30px;
+      margin: 30px 0;
+    }
+
+    .card { 
+      background: linear-gradient(135deg, rgba(15, 15, 15, 0.95) 0%, rgba(25, 25, 25, 0.95) 100%);
+      border: 2px solid var(--space-primary); 
+      border-radius: 2px; 
+      padding: 30px; 
+      position: relative; 
+      box-shadow: 
+        0 0 20px rgba(255, 255, 255, 0.15),
+        inset 0 0 15px rgba(0, 255, 255, 0.05),
+        0 0 40px rgba(0, 255, 255, 0.1);
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .card:hover {
+      box-shadow: 
+        0 0 30px rgba(255, 255, 255, 0.25),
+        inset 0 0 20px rgba(0, 255, 255, 0.1),
+        0 0 50px rgba(0, 255, 255, 0.2);
+      transform: translateY(-2px);
+    }
+
+    .card::before { 
+      content: ''; 
+      position: absolute; 
+      top: 0; 
+      left: 0; 
+      right: 0; 
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--space-accent), transparent);
+      animation: scanline 2s ease-in-out infinite;
+    }
+
+    .card::after { 
+      content: ''; 
+      position: absolute; 
+      top: 0; 
+      right: 0; 
+      width: 40px; 
+      height: 40px; 
+      border-top: 3px solid var(--space-primary); 
+      border-right: 3px solid var(--space-primary);
+      opacity: 0.5;
+    }
+
+    .card-content {
+      position: relative;
+      z-index: 1;
+    }
+
+    h2 { 
+      font-size: 1em; 
+      color: var(--space-primary); 
+      margin: 0 0 15px 0; 
+      text-transform: uppercase; 
+      letter-spacing: 2px;
+      font-weight: 600;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+      padding-bottom: 12px;
+      text-shadow: 0 0 5px rgba(0, 255, 255, 0.2);
+    }
+    
+    .data-val { 
+      font-size: 2em; 
+      font-weight: bold; 
+      color: var(--space-accent); 
+      text-shadow: 0 0 10px var(--space-accent), 0 0 20px rgba(0, 255, 255, 0.4);
+      margin: 15px 0;
+      font-family: 'Courier New', monospace;
+      letter-spacing: 1px;
+    }
+    
+    .status { 
+      color: var(--space-secondary); 
+      font-size: 0.95em; 
+      font-weight: bold; 
+      margin-top: 15px; 
+      padding-top: 15px;
+      border-top: 1px solid rgba(255, 255, 255, 0.15);
+      min-height: 1.5em; 
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      animation: statusGlow 2s ease-in-out infinite;
+    }
+
+    .status.active {
+      color: var(--space-accent);
+      animation: statusGlowActive 1s ease-in-out infinite;
+      text-shadow: 0 0 8px var(--space-accent);
+    }
+
+    .footer { 
+      color: var(--space-secondary); 
+      font-size: 0.85em; 
+      margin: 60px auto 30px; 
+      font-style: italic; 
+      letter-spacing: 1px;
+      opacity: 0.6;
+      text-transform: uppercase;
+      text-shadow: 0 0 5px rgba(0, 255, 255, 0.15);
+    }
+
+    .pulse-dot {
+      display: inline-block;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--space-accent);
+      margin-right: 8px;
+      animation: dotPulse 1.5s ease-in-out infinite;
+      box-shadow: 0 0 5px var(--space-accent);
+    }
+
+    /* === ANIMATIONS === */
+
+    @keyframes starfield {
+      0% { background-position: 0 0, 0 0, 0 0; }
+      100% { background-position: 200px 0, 150px 0, 100px 0; }
+    }
+
+    @keyframes twinkleStar {
+      0%, 100% { opacity: 0.3; }
+      50% { opacity: 1; }
+    }
+
+    @keyframes driftStar {
+      0% { transform: translateX(0) translateY(0); }
+      50% { transform: translateX(10px) translateY(-5px); }
+      100% { transform: translateX(0) translateY(0); }
+    }
+    
+    @keyframes spacePulse {
+      0%, 100% { 
+        opacity: 0.85;
+        text-shadow: 0 0 10px var(--space-accent), 0 0 20px rgba(0, 255, 255, 0.5), 2px 2px 4px rgba(0,0,0,0.9);
+      }
+      50% { 
+        opacity: 1;
+        text-shadow: 0 0 20px var(--space-accent), 0 0 40px rgba(0, 255, 255, 0.7), 2px 2px 4px rgba(0,0,0,0.9);
+      }
+    }
+
+    @keyframes scanline {
+      0% { opacity: 0; }
+      50% { opacity: 1; }
+      100% { opacity: 0; }
+    }
+
+    @keyframes statusGlow {
+      0%, 100% { 
+        opacity: 0.8;
+        color: var(--space-secondary);
+      }
+      50% { 
+        opacity: 1;
+        color: var(--space-primary);
+        text-shadow: 0 0 5px rgba(255, 255, 255, 0.3);
+      }
+    }
+
+    @keyframes statusGlowActive {
+      0%, 100% { 
+        opacity: 0.9;
+        color: var(--space-accent);
+        text-shadow: 0 0 8px var(--space-accent);
+      }
+      50% { 
+        opacity: 1;
+        color: var(--space-accent);
+        text-shadow: 0 0 15px var(--space-accent);
+      }
+    }
+
+    @keyframes dotPulse {
+      0%, 100% { 
+        opacity: 0.4;
+        box-shadow: 0 0 5px var(--space-accent);
+      }
+      50% { 
+        opacity: 1;
+        box-shadow: 0 0 15px var(--space-accent);
+      }
+    }
+
+    /* Responsive */
+    @media (max-width: 600px) {
+      h1 { font-size: 1.6em; }
+      .card { padding: 20px; }
+      .data-val { font-size: 1.5em; }
+      h2 { font-size: 0.9em; }
+    }
+  </style>
+  <script>
+    setInterval(function() {
+      fetch('/data').then(response => response.json()).then(data => {
+        document.getElementById('soil').innerText = data.soil;
+        document.getElementById('ph').innerText = data.ph;
+        document.getElementById('co2').innerText = data.co2;
+        
+        // Update status with active indicator
+        let soilStatusEl = document.getElementById('soilStatus');
+        soilStatusEl.innerText = (data.sState !== 'IDLE' ? '<span class="pulse-dot"></span>' : '') + data.sState + (data.sState !== 'IDLE' ? ' [' + data.sTime + 's]' : '');
+        soilStatusEl.classList.toggle('active', data.sState !== 'IDLE');
+        soilStatusEl.innerHTML = (data.sState !== 'IDLE' ? '<span class="pulse-dot"></span>' : '') + data.sState + (data.sState !== 'IDLE' ? ' [' + data.sTime + 's]' : '');
+
+        let waterStatusEl = document.getElementById('waterStatus');
+        waterStatusEl.innerText = (data.wState !== 'IDLE' ? '<span class="pulse-dot"></span>' : '') + data.wState + (data.wState !== 'IDLE' ? ' [' + data.wTime + 's]' : '');
+        waterStatusEl.classList.toggle('active', data.wState !== 'IDLE');
+        waterStatusEl.innerHTML = (data.wState !== 'IDLE' ? '<span class="pulse-dot"></span>' : '') + data.wState + (data.wState !== 'IDLE' ? ' [' + data.wTime + 's]' : '');
+
+        let co2StatusEl = document.getElementById('co2Status');
+        co2StatusEl.innerText = (data.cState !== 'IDLE' ? '<span class="pulse-dot"></span>' : '') + data.cState + (data.cState !== 'IDLE' ? ' [' + data.cTime + 's]' : '');
+        co2StatusEl.classList.toggle('active', data.cState !== 'IDLE');
+        co2StatusEl.innerHTML = (data.cState !== 'IDLE' ? '<span class="pulse-dot"></span>' : '') + data.cState + (data.cState !== 'IDLE' ? ' [' + data.cTime + 's]' : '');
+      }).catch(err => console.log("Waiting for telemetry..."));
+    }, 1000);
+  </script>
+</head>
+<body>
+  <h1>Team Mushak</h1>
+  <div class="subtitle">Task Tools readings </div>
+  
+  <div class="container">
+    <div class="grid">
+      <div class="card">
+        <div class="card-content">
+          <h2>Soil Moisture</h2>
+          <div class="data-val" id="soil">waiting</div>
+          <div class="status" id="soilStatus">IDLE</div>
+        </div>
+      </div>
+      
+      <div class="card">
+        <div class="card-content">
+          <h2>Water pH</h2>
+          <div class="data-val" id="ph">waiting</div>
+          <div class="status" id="waterStatus">IDLE</div>
+        </div>
+      </div>
+      
+      <div class="card">
+        <div class="card-content">
+          <h2>Atmosphere CO2</h2>
+          <div class="data-val" id="co2">WAITING</div>
+          <div class="status" id="co2Status">IDLE</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  
+  <div class="footer">By Shantanu Puthran</div>
+</body>
+</html>
