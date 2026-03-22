@@ -196,6 +196,21 @@
       text-shadow: 0 0 5px rgba(0, 255, 255, 0.15);
     }
 
+    .key-debug {
+      max-width: 960px;
+      margin: 0 auto 24px;
+      padding: 12px 16px;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      background: rgba(0, 0, 0, 0.35);
+      color: var(--space-secondary);
+      font-size: 0.85em;
+      letter-spacing: 0.5px;
+      text-align: left;
+    }
+
+    .key-debug.ok { color: #7dffb0; border-color: rgba(125, 255, 176, 0.6); }
+    .key-debug.err { color: #ff8e8e; border-color: rgba(255, 142, 142, 0.6); }
+
     .pulse-dot {
       display: inline-block;
       width: 8px;
@@ -287,6 +302,69 @@
     }
   </style>
   <script>
+    function updateKeyDebug(message, statusClass) {
+      const el = document.getElementById('keyDebug');
+      if (!el) return;
+      const now = new Date();
+      const hh = String(now.getHours()).padStart(2, '0');
+      const mm = String(now.getMinutes()).padStart(2, '0');
+      const ss = String(now.getSeconds()).padStart(2, '0');
+      el.textContent = '[' + hh + ':' + mm + ':' + ss + '] ' + message;
+      el.classList.remove('ok', 'err');
+      if (statusClass) el.classList.add(statusClass);
+    }
+
+    async function triggerTask(taskName) {
+      try {
+        const response = await fetch('/trigger/tasktool?task=' + encodeURIComponent(taskName), { method: 'POST' });
+        if (!response.ok) {
+          return { ok: false, status: response.status };
+        }
+        return { ok: true, status: response.status };
+      } catch (err) {
+        return { ok: false, error: err.message || 'request-failed' };
+      }
+    }
+
+    const taskByKey = {
+      Shift: 'soil',
+      Control: 'water',
+      Ctrl: 'water',
+      Alt: 'co2'
+    };
+
+    const taskByCode = {
+      ShiftLeft: 'soil',
+      ShiftRight: 'soil',
+      ControlLeft: 'water',
+      ControlRight: 'water',
+      AltLeft: 'co2',
+      AltRight: 'co2'
+    };
+
+    window.addEventListener('keydown', async function(event) {
+      const targetTag = (event.target && event.target.tagName) ? event.target.tagName.toLowerCase() : '';
+      if (targetTag === 'input' || targetTag === 'textarea' || targetTag === 'select') return;
+      if (event.repeat) return;
+
+      const task = taskByKey[event.key] || taskByCode[event.code];
+      if (!task) {
+        updateKeyDebug('Key seen but not mapped: key=' + event.key + ' code=' + event.code, 'err');
+        return;
+      }
+
+      event.preventDefault();
+      updateKeyDebug('Detected key=' + event.key + ' code=' + event.code + ' -> task=' + task + ' (sending...)');
+      const result = await triggerTask(task);
+      if (result.ok) {
+        updateKeyDebug('OK key=' + event.key + ' code=' + event.code + ' -> task=' + task + ' HTTP ' + result.status, 'ok');
+      } else if (result.status) {
+        updateKeyDebug('FAILED key=' + event.key + ' code=' + event.code + ' -> task=' + task + ' HTTP ' + result.status, 'err');
+      } else {
+        updateKeyDebug('FAILED key=' + event.key + ' code=' + event.code + ' -> task=' + task + ' error=' + result.error, 'err');
+      }
+    }, true);
+
     setInterval(function() {
       fetch('/data').then(response => response.json()).then(data => {
         document.getElementById('soil').innerText = data.soil;
@@ -315,6 +393,7 @@
 <body>
   <h1>Team Mushak</h1>
   <div class="subtitle">Task Tools readings </div>
+  <div id="keyDebug" class="key-debug">Keyboard debug: click anywhere on this page, then press Shift/Ctrl/Alt.</div>
   
   <div class="container">
     <div class="grid">
