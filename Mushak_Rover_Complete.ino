@@ -5,26 +5,22 @@
 #include <WiFi.h>
 #include <WebServer.h>
 
-// --- Wi-Fi & Web Server Setup ---
 const char* ssid = "Team_Mushak_Rover";
 const char* password = "lunarlane2026"; 
 WebServer server(80);
 
-// --- Motor & Servo Pin Definitions ---
 const int PWM_Z_AXIS = 18; 
 const int DIR_Z_AXIS = 19; 
 const int PWM_SCREW = 25;  
 const int DIR_SCREW = 26;  
 const int SERVO_PIN = 27;  
 
-// --- Sensor Pin Definitions ---
 const int PH_PIN = 34;         
 const int SOIL_SENSE_PIN = 35; 
 
 Servo waterServo;
 SensirionI2cScd4x scd4x;
 
-// --- State Machines & Timers ---
 enum SoilState { SOIL_IDLE, LOWERING, SCREWING, RAISING };
 SoilState currentSoilState = SOIL_IDLE;
 unsigned long soilTimer = 0;
@@ -38,20 +34,15 @@ bool waterActive = false;
 unsigned long co2Timer = 0;
 bool co2Active = false;
 
-// --- Switch Edge Detection Memory ---
 bool prevSoilSwitch = false;
 bool prevWaterSwitch = false;
 bool prevCo2Switch = false;
 
-// --- Global Telemetry Variables ---
 int lastSoilMoisture = 0;
 int lastPhRaw = 0;
 uint16_t lastCo2 = 0;
 unsigned long lastTelemetryPrint = 0;
 
-// ==========================================
-// WEB SERVER HTML & ROUTES
-// ==========================================
 
 const char* htmlDashboard = R"rawliteral(
 <!DOCTYPE html>
@@ -368,15 +359,25 @@ const char* htmlDashboard = R"rawliteral(
     }
 
     async function triggerTask(taskName) {
-      try {
-        const response = await fetch('/trigger/tasktool?task=' + encodeURIComponent(taskName), { method: 'POST' });
-        if (!response.ok) {
-          return { ok: false, status: response.status };
+      const url = '/trigger/tasktool?task=' + encodeURIComponent(taskName);
+
+      async function tryMethod(method) {
+        try {
+          const response = await fetch(url, { method: method });
+          return { ok: response.ok, status: response.status, method: method };
+        } catch (err) {
+          return { ok: false, error: err.message || 'request-failed', method: method };
         }
-        return { ok: true, status: response.status };
-      } catch (err) {
-        return { ok: false, error: err.message || 'request-failed' };
       }
+
+      const postResult = await tryMethod('POST');
+      if (postResult.ok || postResult.status === 409) return postResult;
+
+      const getResult = await tryMethod('GET');
+      if (getResult.ok || getResult.status === 409) return getResult;
+
+      if (getResult.status || getResult.error) return getResult;
+      return postResult;
     }
 
     const taskByKey = {
@@ -410,11 +411,13 @@ const char* htmlDashboard = R"rawliteral(
       updateKeyDebug('Detected key=' + event.key + ' code=' + event.code + ' -> task=' + task + ' (sending...)');
       const result = await triggerTask(task);
       if (result.ok) {
-        updateKeyDebug('OK key=' + event.key + ' code=' + event.code + ' -> task=' + task + ' HTTP ' + result.status, 'ok');
+        updateKeyDebug('OK key=' + event.key + ' code=' + event.code + ' -> task=' + task + ' via ' + result.method + ' HTTP ' + result.status, 'ok');
+      } else if (result.status === 409) {
+        updateKeyDebug('BUSY key=' + event.key + ' code=' + event.code + ' -> task=' + task + ' via ' + result.method + ' HTTP 409');
       } else if (result.status) {
-        updateKeyDebug('FAILED key=' + event.key + ' code=' + event.code + ' -> task=' + task + ' HTTP ' + result.status, 'err');
+        updateKeyDebug('FAILED key=' + event.key + ' code=' + event.code + ' -> task=' + task + ' via ' + result.method + ' HTTP ' + result.status, 'err');
       } else {
-        updateKeyDebug('FAILED key=' + event.key + ' code=' + event.code + ' -> task=' + task + ' error=' + result.error, 'err');
+        updateKeyDebug('FAILED key=' + event.key + ' code=' + event.code + ' -> task=' + task + ' via ' + result.method + ' error=' + result.error, 'err');
       }
     }, true);
 
@@ -440,7 +443,7 @@ const char* htmlDashboard = R"rawliteral(
   </script>
 </head>
 <body>
-  <h1>🛸 TEAM MUSHAK 🛸</h1>
+  <h1>TEAM MUSHAK</h1>
   <div class="subtitle">Space Protocol - Telemetry Active</div>
   <div id="keyDebug" class="key-debug">Keyboard debug: click anywhere on this page, then press Shift/Ctrl/Alt.</div>
   
@@ -472,7 +475,7 @@ const char* htmlDashboard = R"rawliteral(
     </div>
   </div>
   
-  <div class="footer">🛸 SPACE PROTOCOL ACTIVE :: SECURE TELEMETRY LINK 🛸</div>
+  <div class="footer">SPACE PROTOCOL ACTIVE :: SECURE TELEMETRY LINK</div>
 </body>
 </html>
 )rawliteral";
@@ -482,11 +485,9 @@ void handleRoot() {
 }
 
 void handleData() {
-  // Add CORS headers for cross-origin requests
   server.sendHeader("Access-Control-Allow-Origin", "*");
   server.sendHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   
-  // --- 1. Calculate Live Countdowns ---
   String sState = "IDLE"; int sTime = 0;
   if(soilActive) {
     unsigned long t = millis() - soilTimer;
@@ -511,9 +512,7 @@ void handleData() {
     if(cTime < 0) cTime = 0;
   }
 
-  // --- 2. Mathematical Conversions ---
   
-  // SOIL MATH (% VWC & m3/m3)
   float airValue = 3500.0;
   float waterValue = 1500.0;
   float vwcPercent = ((airValue - lastSoilMoisture) / (airValue - waterValue)) * 100.0;
@@ -522,17 +521,14 @@ void handleData() {
   float m3m3 = vwcPercent / 100.0;
   String soilFormatted = String(vwcPercent, 0) + "% VWC | " + String(m3m3, 2) + " m³/m³";
 
-  // WATER pH MATH
   float phVoltage = lastPhRaw * (3.3 / 4095.0);
   float finalPh = (-5.70 * phVoltage) + 21.25; 
   if (finalPh < 0.0) finalPh = 0.0;
   if (finalPh > 14.0) finalPh = 14.0;
   String phFormatted = String(finalPh, 1) + " pH";
 
-  // CO2 FORMATTING
   String co2Formatted = String(lastCo2) + " ppm";
 
-  // --- 3. Package JSON ---
   String json = "{";
   json += "\"soil\":\"" + soilFormatted + "\",";
   json += "\"ph\":\"" + phFormatted + "\",";
@@ -585,9 +581,6 @@ void handleTaskToolTrigger() {
   server.send(400, "application/json", "{\"ok\":false,\"reason\":\"unknown-task\"}");
 }
 
-// ==========================================
-// MAIN SETUP
-// ==========================================
 
 void setup() {
   Serial.begin(115200);
@@ -617,14 +610,10 @@ void setup() {
   Serial.println("Web Server Online.");
 }
 
-// ==========================================
-// MAIN LOOP
-// ==========================================
 
 void loop() {
   server.handleClient(); 
 
-  // --- 1. Read MAVLink from Pixhawk ---
   mavlink_message_t msg; mavlink_status_t status;
   while (Serial2.available() > 0) {
     uint8_t c = Serial2.read();
@@ -648,19 +637,14 @@ void loop() {
     }
   }
 
-  // --- 2. Run Mechanical Sequences ---
   runSoil(); runWater(); runCO2();
 
-  // --- 3. Update Telemetry Variables ---
   if (millis() - lastTelemetryPrint >= 1000) {
     updateTelemetry();
     lastTelemetryPrint = millis();
   }
 }
 
-// ==========================================
-// AUTONOMOUS TASK FUNCTIONS
-// ==========================================
 
 void startSoil() { soilActive = true; currentSoilState = LOWERING; soilTimer = millis(); }
 void runSoil() {
@@ -706,9 +690,6 @@ void runCO2() {
   if (millis() - co2Timer >= 30000) { co2Active = false; }
 }
 
-// ==========================================
-// SENSOR UPDATER
-// ==========================================
 void updateTelemetry() {
   if (soilActive && currentSoilState == SCREWING) {
     lastSoilMoisture = analogRead(SOIL_SENSE_PIN);

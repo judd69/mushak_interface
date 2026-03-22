@@ -222,7 +222,6 @@
       box-shadow: 0 0 5px var(--space-accent);
     }
 
-    /* === ANIMATIONS === */
 
     @keyframes starfield {
       0% { background-position: 0 0, 0 0, 0 0; }
@@ -293,7 +292,6 @@
       }
     }
 
-    /* Responsive */
     @media (max-width: 600px) {
       h1 { font-size: 1.6em; }
       .card { padding: 20px; }
@@ -315,15 +313,25 @@
     }
 
     async function triggerTask(taskName) {
-      try {
-        const response = await fetch('/trigger/tasktool?task=' + encodeURIComponent(taskName), { method: 'POST' });
-        if (!response.ok) {
-          return { ok: false, status: response.status };
+      const url = '/trigger/tasktool?task=' + encodeURIComponent(taskName);
+
+      async function tryMethod(method) {
+        try {
+          const response = await fetch(url, { method: method });
+          return { ok: response.ok, status: response.status, method: method };
+        } catch (err) {
+          return { ok: false, error: err.message || 'request-failed', method: method };
         }
-        return { ok: true, status: response.status };
-      } catch (err) {
-        return { ok: false, error: err.message || 'request-failed' };
       }
+
+      const postResult = await tryMethod('POST');
+      if (postResult.ok || postResult.status === 409) return postResult;
+
+      const getResult = await tryMethod('GET');
+      if (getResult.ok || getResult.status === 409) return getResult;
+
+      if (getResult.status || getResult.error) return getResult;
+      return postResult;
     }
 
     const taskByKey = {
@@ -357,11 +365,13 @@
       updateKeyDebug('Detected key=' + event.key + ' code=' + event.code + ' -> task=' + task + ' (sending...)');
       const result = await triggerTask(task);
       if (result.ok) {
-        updateKeyDebug('OK key=' + event.key + ' code=' + event.code + ' -> task=' + task + ' HTTP ' + result.status, 'ok');
+        updateKeyDebug('OK key=' + event.key + ' code=' + event.code + ' -> task=' + task + ' via ' + result.method + ' HTTP ' + result.status, 'ok');
+      } else if (result.status === 409) {
+        updateKeyDebug('BUSY key=' + event.key + ' code=' + event.code + ' -> task=' + task + ' via ' + result.method + ' HTTP 409');
       } else if (result.status) {
-        updateKeyDebug('FAILED key=' + event.key + ' code=' + event.code + ' -> task=' + task + ' HTTP ' + result.status, 'err');
+        updateKeyDebug('FAILED key=' + event.key + ' code=' + event.code + ' -> task=' + task + ' via ' + result.method + ' HTTP ' + result.status, 'err');
       } else {
-        updateKeyDebug('FAILED key=' + event.key + ' code=' + event.code + ' -> task=' + task + ' error=' + result.error, 'err');
+        updateKeyDebug('FAILED key=' + event.key + ' code=' + event.code + ' -> task=' + task + ' via ' + result.method + ' error=' + result.error, 'err');
       }
     }, true);
 
@@ -371,7 +381,6 @@
         document.getElementById('ph').innerText = data.ph;
         document.getElementById('co2').innerText = data.co2;
         
-        // Update status with active indicator
         let soilStatusEl = document.getElementById('soilStatus');
         soilStatusEl.innerText = (data.sState !== 'IDLE' ? '<span class="pulse-dot"></span>' : '') + data.sState + (data.sState !== 'IDLE' ? ' [' + data.sTime + 's]' : '');
         soilStatusEl.classList.toggle('active', data.sState !== 'IDLE');
