@@ -491,8 +491,8 @@ void handleData() {
   String sState = "IDLE"; int sTime = 0;
   if(soilActive) {
     unsigned long t = millis() - soilTimer;
-    if(currentSoilState == LOWERING) { sState = "LOWERING Z-AXIS"; sTime = (10000 - t)/1000; }
-    else if(currentSoilState == SCREWING) { sState = "DRILLING SOIL"; sTime = (30000 - t)/1000; }
+    if(currentSoilState == LOWERING) { sState = "LOWERING Z-AXIS"; sTime = (15000 - t)/1000; } 
+    else if(currentSoilState == SCREWING) { sState = "DRILLING SOIL"; sTime = (40000 - t)/1000; } 
     else if(currentSoilState == RAISING) { sState = "RAISING Z-AXIS"; sTime = (10000 - t)/1000; }
     if(sTime < 0) sTime = 0;
   }
